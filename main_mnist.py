@@ -1,4 +1,5 @@
 from __future__ import print_function
+import os
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -125,6 +126,14 @@ class MNISTAlbumentations(datasets.MNIST):
     def __init__(self, root, train=True, download=True, transform=None):
         super().__init__(root, train=train, download=download, transform=None)
         self.transform = transform
+
+    @property
+    def raw_folder(self):
+        return os.path.join(self.root, "MNIST", "raw")
+
+    @property
+    def processed_folder(self):
+        return os.path.join(self.root, "MNIST", "processed")
         
     def __getitem__(self, idx):
         img, label = self.data[idx], self.targets[idx]
