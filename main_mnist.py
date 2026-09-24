@@ -68,7 +68,7 @@ class Net(nn.Module):
         x = self.conv3(x)
         x = self.conv4(x)
         x = self.conv5(x)
-        x = x.view(-1, 16 * 3 * 3)
+        x = x.reshape(-1, 16 * 3 * 3)
         x = self.fc1(x)
         return x
 

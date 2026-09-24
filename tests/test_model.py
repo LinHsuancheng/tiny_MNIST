@@ -58,3 +58,14 @@ def test_model_forward_pass():
     output = model(input_tensor)
     
     assert output.shape == (batch_size, 10), f"Expected output shape (1, 10), but got {output.shape}"
+
+
+def test_model_forward_handles_noncontiguous_feature_maps():
+    model = Net()
+    model.conv5.register_forward_hook(
+        lambda _module, _inputs, output: output.transpose(2, 3)
+    )
+
+    output = model(torch.randn(1, 1, 28, 28))
+
+    assert output.shape == (1, 10)
