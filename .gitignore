@@ -1,0 +1,23 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+env/
+
+# Datasets and generated training artifacts
+data/
+*.pt
+*.pth
+*.onnx
+*.tflite
+*.bin
+checkpoints/
+outputs/
+runs/
+logs/
+
+# Local tooling and OS files
+.DS_Store
+.idea/
+.vscode/
