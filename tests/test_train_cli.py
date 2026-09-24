@@ -6,6 +6,7 @@ import pytest
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 TRAIN_SCRIPT = PROJECT_ROOT / "train.py"
+QUANTIZE_SCRIPT = PROJECT_ROOT / "quantize.py"
 sys.path.insert(0, str(PROJECT_ROOT))
 
 
@@ -22,6 +23,21 @@ def test_train_help_exposes_one_shot_training_options():
     assert "--epochs" in result.stdout
     assert "--output-dir" in result.stdout
     assert "--resume" in result.stdout
+
+
+def test_quantize_help_exposes_accuracy_test_options():
+    result = subprocess.run(
+        [sys.executable, str(QUANTIZE_SCRIPT), "--help"],
+        cwd=PROJECT_ROOT,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert "--checkpoint" in result.stdout
+    assert "--calibration-batches" in result.stdout
+    assert "--backend" in result.stdout
 
 
 def test_default_paths_are_project_local():

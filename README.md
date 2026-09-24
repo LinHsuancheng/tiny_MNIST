@@ -95,3 +95,30 @@ outputs/
 ```
 
 `outputs/`、数据集和模型二进制文件不会提交到 Git。后续 INT8 阶段会从 `best.pt` 生成独立的量化模型文件，不覆盖 FP32 checkpoint。
+
+## INT8 精度测试
+
+训练完成后，可以对 FP32 最佳 checkpoint 做静态 PTQ：
+
+```bash
+python quantize.py \
+  --checkpoint outputs/checkpoints/best.pt \
+  --data-dir data \
+  --calibration-batches 20
+```
+
+脚本会融合 Conv+BN+ReLU，使用训练集样本做 calibration，然后在 CPU 上运行 INT8 Conv/Linear，并输出：
+
+```text
+fp32_accuracy=...
+int8_accuracy=...
+accuracy_drop=...
+```
+
+量化结果保存到：
+
+```text
+outputs/quantized/model_int8.pt
+```
+
+当前脚本用于验证 PyTorch 静态 INT8 的精度变化；后续硬件导出还需要把量化权重、INT32 bias、scale 和 zero-point 导出成硬件格式。
