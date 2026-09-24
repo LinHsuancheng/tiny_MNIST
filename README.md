@@ -6,9 +6,9 @@
 
 - 输入：`1 x 28 x 28` grayscale MNIST image
 - 输出：10 个数字类别
-- 可训练参数：`3,970`
-- FP32 参数存储：约 `15.5 KiB`
-- 网络结构：`ZeroPad(2)`、七个 `3x3 Conv/BatchNorm/ReLU`、四次池化，最后 `32 -> 10` 全连接
+- 可训练参数：`3,632`
+- FP32 参数存储：约 `14.2 KiB`
+- 网络结构：五个 `3x3 Conv/BatchNorm/ReLU`、三次池化，最后 `144 -> 10` 全连接
 - 本项目的训练工程化不会改变 `Net` 的层数、通道数、kernel、pool 或全连接维度
 
 ## 安装
@@ -77,8 +77,8 @@ pytest -q
 
 当前测试覆盖：
 
-- 参数量必须为 `3,970`；
-- ZeroPad、BatchNorm、无 bias 的卷积和全连接层尺寸正确；
+- 参数量必须为 `3,632`；
+- Same padding、BatchNorm、无 bias 的卷积和全连接层尺寸正确；
 - 前向输出形状为 `(batch, 10)`；
 - `train.py` 的帮助参数和默认路径；
 - checkpoint 保存与恢复训练状态。

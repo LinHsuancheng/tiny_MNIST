@@ -21,43 +21,30 @@ class Net(nn.Module):
     def __init__(self):
         super(Net, self).__init__()
 
-        # 28x28 -> 32x32. The padding has no trainable parameters.
-        self.pad = nn.ZeroPad2d(2)
-
-        # First convolutional block: 32x32 -> 16x16.
+        # First convolutional block: 28x28 -> 14x14.
         self.conv1 = nn.Sequential(
-            nn.Conv2d(1, 8, 3, padding=1, bias=False),
-            nn.BatchNorm2d(8),
-            nn.ReLU(),
-            nn.Conv2d(8, 8, 3, padding=1, bias=False),
-            nn.BatchNorm2d(8),
+            nn.Conv2d(1, 2, 3, padding=1, bias=False),
+            nn.BatchNorm2d(2),
             nn.ReLU(),
             nn.MaxPool2d(2, 2),
         )
 
-        # Second convolutional block: 16x16 -> 8x8.
+        # Second convolutional block: 14x14 -> 7x7.
         self.conv2 = nn.Sequential(
-            nn.Conv2d(8, 8, 3, padding=1, bias=False),
-            nn.BatchNorm2d(8),
-            nn.ReLU(),
-            nn.Conv2d(8, 8, 3, padding=1, bias=False),
-            nn.BatchNorm2d(8),
+            nn.Conv2d(2, 4, 3, padding=1, bias=False),
+            nn.BatchNorm2d(4),
             nn.ReLU(),
             nn.MaxPool2d(2, 2),
         )
 
-        # Third convolutional block: 8x8 -> 4x4.
+        # Third convolution: 7x7 -> 7x7.
         self.conv3 = nn.Sequential(
-            nn.Conv2d(8, 8, 3, padding=1, bias=False),
+            nn.Conv2d(4, 8, 3, padding=1, bias=False),
             nn.BatchNorm2d(8),
             nn.ReLU(),
-            nn.Conv2d(8, 8, 3, padding=1, bias=False),
-            nn.BatchNorm2d(8),
-            nn.ReLU(),
-            nn.MaxPool2d(2, 2),
         )
 
-        # Fourth convolutional block: 4x4 -> 2x2.
+        # Fourth convolutional block: 7x7 -> 3x3.
         self.conv4 = nn.Sequential(
             nn.Conv2d(8, 8, 3, padding=1, bias=False),
             nn.BatchNorm2d(8),
@@ -65,16 +52,23 @@ class Net(nn.Module):
             nn.MaxPool2d(2, 2),
         )
 
-        # 2x2x8 -> 32 -> 10 logits.
-        self.fc1 = nn.Linear(8 * 2 * 2, 10)
+        # Fifth convolution: 3x3 -> 3x3.
+        self.conv5 = nn.Sequential(
+            nn.Conv2d(8, 16, 3, padding=1, bias=False),
+            nn.BatchNorm2d(16),
+            nn.ReLU(),
+        )
+
+        # 3x3x16 -> 144 -> 10 logits.
+        self.fc1 = nn.Linear(16 * 3 * 3, 10)
         
     def forward(self, x):
-        x = self.pad(x)
         x = self.conv1(x)
         x = self.conv2(x)
         x = self.conv3(x)
         x = self.conv4(x)
-        x = x.view(-1, 8 * 2 * 2)
+        x = self.conv5(x)
+        x = x.view(-1, 16 * 3 * 3)
         x = self.fc1(x)
         return x
 
