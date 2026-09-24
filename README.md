@@ -1,187 +1,97 @@
-# MNIST Classification with PyTorch
+# Compact MNIST Model
 
-[![Model Architecture Checks](https://github.com/dhairyag/tiny_MNIST/actions/workflows/model_checks.yml/badge.svg)](https://github.com/dhairyag/tiny_MNIST/actions/workflows/model_checks.yml)
+这是一个参数量低于 4K 的 MNIST CNN baseline。当前阶段的目标是保持模型结构不变，建立可靠的 FP32 训练入口，并保存可恢复的 checkpoint；后续再在此基础上增加 INT8 推理导出。
 
-This repository implements a CNN-based deep learning model for MNIST digit classification with automated architecture validation through GitHub Actions.
+## 模型约束
 
-`main_mnist.py` uses only **3,130 parameters** to achieve more than **99.4%** accuracy, observed in multiple runs. 
+- 输入：`1 x 28 x 28` grayscale MNIST image
+- 输出：10 个数字类别
+- 可训练参数：`3,130`
+- FP32 参数存储：约 `12.2 KiB`
+- 网络结构：三段卷积/BatchNorm/ReLU/池化，最后 `90 -> 10` 全连接
+- 本项目的训练工程化不会改变 `Net` 的层数、通道数、kernel、pool 或全连接维度
 
-### Execution and Log Screenshots
-The main file is self contained and can be executed by running 
-```bash
-python main_mnist.py
-```
+## 安装
 
-Screenshots from two representative runs are shown where the model achieves `>99.4%` accuracy.
-
-#### Run 1 (link to text log file [here](./logs_n_images/log_9945.md))
-![Log Image](./logs_n_images/log_9945.png)
-
-#### Run 2 (link to text log file [here](./logs_n_images/log_9943.md))
-![Log Image](./logs_n_images/log_9943.png)
-
-Not all runs achieve the same accuracy. The accuracy depends on the initialization of the model weights. This model achieves more than 99.3% accuracy in almost all runs.
-
-## Model Architecture
-
-The implementation (`main_mnist.py`) features a custom CNN architecture with the following specifications:
-
-### Network Structure
-- **Input**: 28x28 grayscale images (1 channel)
-- **Total Parameters**: 3,130
-- **Output**: 10 classes (digits 0-9)
+建议使用 Python 3.10+ 的虚拟环境：
 
 ```bash
-==========================================================================================
-Layer (type:depth-idx)                   Output Shape              Param #
-==========================================================================================
-Net                                      [1, 10]                   --
-├─Sequential: 1-1                        [1, 6, 14, 14]            --
-│    └─Conv2d: 2-1                       [1, 6, 28, 28]            60
-│    └─BatchNorm2d: 2-2                  [1, 6, 28, 28]            12
-│    └─ReLU: 2-3                         [1, 6, 28, 28]            --
-│    └─Conv2d: 2-4                       [1, 6, 28, 28]            330
-│    └─BatchNorm2d: 2-5                  [1, 6, 28, 28]            12
-│    └─ReLU: 2-6                         [1, 6, 28, 28]            --
-│    └─MaxPool2d: 2-7                    [1, 6, 14, 14]            --
-│    └─Dropout: 2-8                      [1, 6, 14, 14]            --
-├─Sequential: 1-2                        [1, 8, 7, 7]              --
-│    └─Conv2d: 2-9                       [1, 8, 14, 14]            440
-│    └─BatchNorm2d: 2-10                 [1, 8, 14, 14]            16
-│    └─ReLU: 2-11                        [1, 8, 14, 14]            --
-│    └─Conv2d: 2-12                      [1, 8, 14, 14]            584
-│    └─BatchNorm2d: 2-13                 [1, 8, 14, 14]            16
-│    └─ReLU: 2-14                        [1, 8, 14, 14]            --
-│    └─MaxPool2d: 2-15                   [1, 8, 7, 7]              --
-│    └─Dropout: 2-16                     [1, 8, 7, 7]              --
-├─Sequential: 1-3                        [1, 10, 3, 3]             --
-│    └─Conv2d: 2-17                      [1, 10, 7, 7]             730
-│    └─BatchNorm2d: 2-18                 [1, 10, 7, 7]             20
-│    └─ReLU: 2-19                        [1, 10, 7, 7]             --
-│    └─MaxPool2d: 2-20                   [1, 10, 3, 3]             --
-│    └─Dropout: 2-21                     [1, 10, 3, 3]             --
-├─Linear: 1-4                            [1, 10]                   910
-==========================================================================================
-Total params: 3,130
-Trainable params: 3,130
-Non-trainable params: 0
-Total mult-adds (Units.MEGABYTES): 0.54
-==========================================================================================
+python -m venv .venv
+source .venv/bin/activate
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
 ```
 
-### Layer Configuration
+PyTorch 的 CUDA 安装方式可能因平台不同而不同；如果需要 GPU，请按照对应 CUDA 版本的 PyTorch 安装命令替换 `torch` 和 `torchvision` 两项。
 
-1. **First Convolutional Block** (414 parameters)
-   - Conv2D: 1→6 channels, 3x3 kernel, padding=1
-   - BatchNorm2D
-   - ReLU
-   - Conv2D: 6→6 channels, 3x3 kernel, padding=1
-   - BatchNorm2D
-   - ReLU
-   - MaxPool2D (2x2)
-   - Dropout (p=0.01)
+## 一键训练入口
 
-2. **Second Convolutional Block** (1,056 parameters)
-   - Conv2D: 6→8 channels, 3x3 kernel, padding=1
-   - BatchNorm2D
-   - ReLU
-   - Conv2D: 8→8 channels, 3x3 kernel, padding=1
-   - BatchNorm2D
-   - ReLU
-   - MaxPool2D (2x2)
-   - Dropout (p=0.01)
-
-3. **Third Convolutional Block** (750 parameters)
-   - Conv2D: 8→10 channels, 3x3 kernel, padding=1
-   - BatchNorm2D
-   - ReLU
-   - MaxPool2D (2x2)
-   - Dropout (p=0.01)
-
-4. **Classification Head** (910 parameters)
-   - Flatten
-   - Linear: 90→10 (10*3*3 → 10)
-   - LogSoftmax
-
-### Training Configuration
-
-- **Optimizer**: SGD with momentum
-  - Maximum Learning Rate: 0.4
-  - Momentum: 0.95
-  - Weight Decay: 0.0005
-
-- **Learning Rate Schedule**: OneCycleLR
-  - Initial Division Factor: 25
-  - Final Division Factor: 175
-  - Warmup Percentage: 50%
-
-- **Training Parameters**
-  - Batch Size: 512
-  - Epochs: 20
-  - Device: Automatically selects MPS/CUDA/CPU
-
-### Data Augmentation
-
-Only rotation and scaling are used for data augmentation:
-- ShiftScaleRotate
-  - Shift Limit: 0.0625
-  - Scale Limit: 0.05
-  - Rotate Limit: 12°
-- Normalization
-  - Mean: [0.1307]
-  - Std: [0.3081]
-
-## GitHub Actions Workflow
-
-The repository includes automated testing through GitHub Actions (`/.github/workflows/model_checks.yml`).
-
-### Automated Tests
-
-The workflow validates four critical aspects of the model architecture:
-
-1. **Parameter Count Verification**
-   - Ensures the model maintains exactly 3,130 parameters
-   - Validates architectural consistency
-
-2. **Batch Normalization Check**
-   - Confirms the presence of BatchNorm2D layers
-   - Essential for training stability
-
-3. **Dropout Implementation**
-   - Verifies the inclusion of Dropout layers
-   - Critical for preventing overfitting
-
-4. **Linear Layer Validation**
-   - Checks for proper fully connected layer implementation
-   - Validates input (90) and output (10) dimensions
-
-### Running Tests Locally 
+依赖安装完成后，在项目根目录执行：
 
 ```bash
-# Install dependencies
-pip install torch torchvision pytest
-
-# Run tests
-pytest tests/test_model.py -v
+python train.py
 ```
 
-### CI/CD Integration
+默认行为：
 
-The workflow triggers on:
-- Push to main branch
-- Pull requests to main branch
+- 自动选择 MPS、CUDA 或 CPU；
+- 自动下载 MNIST 到 `data/`；
+- 训练 20 个 epoch；
+- 每个 epoch 结束后测试一次；
+- 将训练指标写入 `outputs/metrics.jsonl`；
+- 每个 epoch 保存最近状态到 `outputs/checkpoints/last.pt`；
+- 当测试准确率刷新时保存 `outputs/checkpoints/best.pt`。
 
-Uses Ubuntu latest runner with Python 3.8 for consistent testing environment.
+默认参数沿用原始 baseline：batch size `512`、最大学习率 `0.4`、momentum `0.95`、weight decay `0.0005`、OneCycleLR。
 
-## Requirements
+可以先检查配置和路径而不启动训练：
 
-- Python 3.8+
-- PyTorch
-- torchvision
-- albumentations
-- numpy
-- opencv-python
-- tqdm
-- torchinfo
+```bash
+python train.py --dry-run
+```
 
+常用覆盖参数：
 
+```bash
+python train.py --epochs 20 --batch-size 512 --device cpu
+python train.py --data-dir /path/to/mnist-data --output-dir outputs/run-01
+```
+
+## 断点恢复
+
+`last.pt` 保存模型、optimizer、scheduler、epoch、最佳准确率和训练配置。恢复训练：
+
+```bash
+python train.py --resume outputs/checkpoints/last.pt
+```
+
+恢复时默认继续跑到 `--epochs` 指定的总 epoch 数。若修改了总 epoch、学习率或模型结构，应新建一个 output 目录，避免混用实验结果。
+
+## 测试
+
+运行模型结构测试和训练入口测试：
+
+```bash
+pytest -q
+```
+
+当前测试覆盖：
+
+- 参数量必须为 `3,130`；
+- BatchNorm、Dropout 和全连接层存在且尺寸正确；
+- 前向输出形状为 `(batch, 10)`；
+- `train.py` 的帮助参数和默认路径；
+- checkpoint 保存与恢复训练状态。
+
+## 输出文件
+
+```text
+data/                         # MNIST 数据，git ignored
+outputs/
+├── metrics.jsonl             # 每个 epoch 一行 JSON 指标
+└── checkpoints/
+    ├── best.pt               # 测试准确率最佳 checkpoint
+    └── last.pt               # 最近一次 checkpoint
+```
+
+`outputs/`、数据集和模型二进制文件不会提交到 Git。后续 INT8 阶段会从 `best.pt` 生成独立的量化模型文件，不覆盖 FP32 checkpoint。
