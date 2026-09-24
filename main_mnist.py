@@ -29,19 +29,19 @@ class Net(nn.Module):
             nn.MaxPool2d(2, 2),
         )
 
-        # Second convolutional block: 14x14 -> 7x7.
+        # Second convolution: 14x14 -> 14x14.
         self.conv2 = nn.Sequential(
             nn.Conv2d(2, 4, 3, padding=1, bias=False),
             nn.BatchNorm2d(4),
             nn.ReLU(),
-            nn.MaxPool2d(2, 2),
         )
 
-        # Third convolution: 7x7 -> 7x7.
+        # Third convolutional block: 14x14 -> 7x7.
         self.conv3 = nn.Sequential(
             nn.Conv2d(4, 8, 3, padding=1, bias=False),
             nn.BatchNorm2d(8),
             nn.ReLU(),
+            nn.MaxPool2d(2, 2),
         )
 
         # Fourth convolutional block: 7x7 -> 3x3.

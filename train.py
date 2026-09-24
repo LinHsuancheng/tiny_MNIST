@@ -30,7 +30,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--device", choices=("auto", "cpu", "cuda", "mps"), default="auto")
     parser.add_argument("--num-workers", type=int, default=0)
     parser.add_argument("--seed", type=int, default=14596)
-    parser.add_argument("--max-lr", type=float, default=0.4)
+    parser.add_argument("--max-lr", type=float, default=1e-3)
     parser.add_argument("--initial-div", type=float, default=25.0)
     parser.add_argument("--final-div", type=float, default=175.0)
     parser.add_argument("--warmup-pct", type=float, default=0.5)
@@ -213,10 +213,9 @@ def run_training(args) -> None:
     )
 
     model = Net().to(device)
-    optimizer = torch.optim.SGD(
+    optimizer = torch.optim.AdamW(
         model.parameters(),
         lr=args.max_lr / args.initial_div,
-        momentum=args.momentum,
         weight_decay=args.weight_decay,
     )
     scheduler = torch.optim.lr_scheduler.OneCycleLR(

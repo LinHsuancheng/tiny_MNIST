@@ -51,6 +51,16 @@ def test_convolutions_are_bn_friendly():
     ]
     assert all(conv.bias is None for conv in convs)
 
+
+def test_pooling_positions_match_hardware_architecture():
+    model = Net()
+
+    assert any(isinstance(layer, torch.nn.MaxPool2d) for layer in model.conv1)
+    assert not any(isinstance(layer, torch.nn.MaxPool2d) for layer in model.conv2)
+    assert any(isinstance(layer, torch.nn.MaxPool2d) for layer in model.conv3)
+    assert any(isinstance(layer, torch.nn.MaxPool2d) for layer in model.conv4)
+    assert not any(isinstance(layer, torch.nn.MaxPool2d) for layer in model.conv5)
+
 def test_model_forward_pass():
     model = Net()
     batch_size = 1

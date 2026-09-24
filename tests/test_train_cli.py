@@ -48,6 +48,7 @@ def test_default_paths_are_project_local():
 
     assert args.data_dir == PROJECT_ROOT / "data"
     assert args.output_dir == PROJECT_ROOT / "outputs"
+    assert args.max_lr == pytest.approx(1e-3)
 
 
 def test_checkpoint_paths_are_explicit_and_stable():
