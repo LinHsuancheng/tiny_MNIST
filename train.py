@@ -79,7 +79,7 @@ def train_one_epoch(model, loader, optimizer, scheduler, device, torch, function
         data, target = data.to(device), target.to(device)
         optimizer.zero_grad(set_to_none=True)
         output = model(data)
-        loss = functional.nll_loss(output, target)
+        loss = functional.cross_entropy(output, target)
         loss.backward()
         optimizer.step()
         scheduler.step()
@@ -106,7 +106,7 @@ def evaluate(model, loader, device, torch, functional):
             data, target = data.to(device), target.to(device)
             output = model(data)
             batch_size = target.size(0)
-            total_loss += functional.nll_loss(
+            total_loss += functional.cross_entropy(
                 output, target, reduction="sum"
             ).item()
             total_correct += output.argmax(dim=1).eq(target).sum().item()

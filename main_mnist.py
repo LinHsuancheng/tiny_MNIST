@@ -19,51 +19,63 @@ from albumentations.pytorch import ToTensorV2
 class Net(nn.Module):
     def __init__(self):
         super(Net, self).__init__()
-        
-        # First Convolutional Block
+
+        # 28x28 -> 32x32. The padding has no trainable parameters.
+        self.pad = nn.ZeroPad2d(2)
+
+        # First convolutional block: 32x32 -> 16x16.
         self.conv1 = nn.Sequential(
-            nn.Conv2d(1, 6, 3, padding=1),    # 1*3*3*6 + 6 = 60 params
-            nn.BatchNorm2d(6),                 # 2*6 = 12 params (mean & var)
-            nn.ReLU(),                         # 0 params
-            nn.Conv2d(6, 6, 3, padding=1),     # 6*3*3*6 + 6 = 330 params
-            nn.BatchNorm2d(6),                 # 2*6 = 12 params (mean & var)
-            nn.ReLU(),                         # 0 params
-            nn.MaxPool2d(2, 2),                # 0 params
-            nn.Dropout(0.01)                   # 0 params
-        )                                      # conv1: 414 params
-        
-        # Second Convolutional Block
+            nn.Conv2d(1, 8, 3, padding=1, bias=False),
+            nn.BatchNorm2d(8),
+            nn.ReLU(),
+            nn.Conv2d(8, 8, 3, padding=1, bias=False),
+            nn.BatchNorm2d(8),
+            nn.ReLU(),
+            nn.MaxPool2d(2, 2),
+        )
+
+        # Second convolutional block: 16x16 -> 8x8.
         self.conv2 = nn.Sequential(
-            nn.Conv2d(6, 8, 3, padding=1),     # 6*3*3*8 + 8 = 440 params
-            nn.BatchNorm2d(8),                 # 2*8 = 16 params (mean & var)
-            nn.ReLU(),                         # 0 params
-            nn.Conv2d(8, 8, 3, padding=1),     # 8*3*3*8 + 8 = 584 params
-            nn.BatchNorm2d(8),                 # 2*8 = 16 params (mean & var)
-            nn.ReLU(),                         # 0 params
-            nn.MaxPool2d(2, 2),                # 0 params
-            nn.Dropout(0.01)                   # 0 params
-        )                                      # conv2: 1056 params
-        
-        # Third Convolutional Block
+            nn.Conv2d(8, 8, 3, padding=1, bias=False),
+            nn.BatchNorm2d(8),
+            nn.ReLU(),
+            nn.Conv2d(8, 8, 3, padding=1, bias=False),
+            nn.BatchNorm2d(8),
+            nn.ReLU(),
+            nn.MaxPool2d(2, 2),
+        )
+
+        # Third convolutional block: 8x8 -> 4x4.
         self.conv3 = nn.Sequential(
-            nn.Conv2d(8, 10, 3, padding=1),    # 8*3*3*10 + 10 = 730 params
-            nn.BatchNorm2d(10),                # 2*10 = 20 params (mean & var)
-            nn.ReLU(),                         # 0 params
-            nn.MaxPool2d(2, 2),                # 0 params
-            nn.Dropout(0.01)                   # 0 params
-        )                                      # conv3: 750 params
-        
-        # Fully Connected Layer
-        # After three max pools: 28x28 -> 14x14 -> 7x7 -> 3x3
-        self.fc1 = nn.Linear(10 * 3 * 3, 10)   # 10*3*3*10 + 10 = 910 params
+            nn.Conv2d(8, 8, 3, padding=1, bias=False),
+            nn.BatchNorm2d(8),
+            nn.ReLU(),
+            nn.Conv2d(8, 8, 3, padding=1, bias=False),
+            nn.BatchNorm2d(8),
+            nn.ReLU(),
+            nn.MaxPool2d(2, 2),
+        )
+
+        # Fourth convolutional block: 4x4 -> 2x2.
+        self.conv4 = nn.Sequential(
+            nn.Conv2d(8, 8, 3, padding=1, bias=False),
+            nn.BatchNorm2d(8),
+            nn.ReLU(),
+            nn.MaxPool2d(2, 2),
+        )
+
+        # 2x2x8 -> 32 -> 10 logits.
+        self.fc1 = nn.Linear(8 * 2 * 2, 10)
         
     def forward(self, x):
+        x = self.pad(x)
         x = self.conv1(x)
         x = self.conv2(x)
         x = self.conv3(x)
-        x = x.view(-1, 10 * 3 * 3)  # Flatten
+        x = self.conv4(x)
+        x = x.view(-1, 8 * 2 * 2)
         x = self.fc1(x)
-        return F.log_softmax(x, dim=1)
+        return x
 
 
 ###################
@@ -161,7 +173,7 @@ def train(model, device, train_loader, optimizer, epoch, scheduler=None):
         data, target = data.to(device), target.to(device)
         optimizer.zero_grad()
         output = model(data)
-        loss = F.nll_loss(output, target)
+        loss = F.cross_entropy(output, target)
         loss.backward()
         optimizer.step()
         
@@ -186,7 +198,7 @@ def test(model, device, test_loader):
         for data, target in test_loader:
             data, target = data.to(device), target.to(device)
             output = model(data)
-            test_loss += F.nll_loss(output, target, reduction='sum').item()
+            test_loss += F.cross_entropy(output, target, reduction='sum').item()
             pred = output.argmax(dim=1, keepdim=True)
             correct += pred.eq(target.view_as(pred)).sum().item()
 
