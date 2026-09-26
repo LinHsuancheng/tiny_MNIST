@@ -109,7 +109,7 @@ BN 不作为独立硬件模块存在，也不额外占用 activation SRAM。折�
 - 累加器使用 INT32
 - 输出 scale 和 zero-point 用于层间重新量化
 
-折叠后的核心权重和 bias 约占 `3.7 KB`，配合复用 activation buffer，可满足 `8 KB SRAM` 的部署目标。
+折叠后 INT8 权重为 `3,546 B`，48 个 bias 使用 INT32 为 `192 B`；逐输出通道权重 scale 若使用 FP32，另需 `192 B`。这些参数和下述激活缓冲区合计 `5,106 B`，还需为层描述、输出 scale/zero-point、对齐及计算暂存预留空间。PyTorch 的 `.pt` 检查点包含序列化开销，不能直接作为 SRAM 镜像。
 
 主要 INT8 activation buffer 尺寸如下：
 
@@ -141,8 +141,20 @@ BN 不作为独立硬件模块存在，也不额外占用 activation SRAM。折�
 uv venv .venv --python 3.12
 uv pip install --python .venv/bin/python -r requirements.txt
 .venv/bin/python -m pytest -q
-NO_ALBUMENTATIONS_UPDATE=1 TQDM_DISABLE=1 .venv/bin/python train.py --device cuda --num-workers 4
-NO_ALBUMENTATIONS_UPDATE=1 .venv/bin/python quantize.py --checkpoint outputs/checkpoints/best.pt --data-dir data --calibration-batches 20 --num-workers 4
+NO_ALBUMENTATIONS_UPDATE=1 TQDM_DISABLE=1 .venv/bin/python train.py --device cuda --num-workers 2 --epochs 120 --max-lr 0.003 --warmup-pct 0.3 --output-dir outputs/narrow_e120_lr003
+NO_ALBUMENTATIONS_UPDATE=1 .venv/bin/python - <<'PY'
+import torch
+import quantize
+
+torch.manual_seed(14596)
+quantize.main([
+    '--checkpoint', 'outputs/narrow_e120_lr003/checkpoints/best.pt',
+    '--data-dir', 'data',
+    '--output', 'outputs/pool-stride2-fp32-int8/model_int8.pt',
+    '--calibration-batches', '20',
+    '--num-workers', '4',
+])
+PY
 ```
 
-2026-09-25 在 A100 上使用默认随机种子 `14596`、默认 batch size `512` 和 `20` 个 epoch 验证：14 项测试通过；第 18 个 epoch 的最佳 FP32 测试集准确率为 `97.99%`，量化后 INT8 准确率为 `97.88%`（下降 `0.11` 个百分点）。训练指标和 checkpoint 分别保存在 `outputs/metrics.jsonl` 与 `outputs/checkpoints/`。这里的准确率是新结构的结果，不代表与旧 MaxPool 模型等精度；上述 MAC 减少也不是实测运行时间。
+2026-09-26 使用原始 `2→4→8→8→16` 通道数，在 A100 上训练 120 个 epoch：最佳 FP32 测试准确率为 `99.07%`；相同 checkpoint 在 CPU 上量化后为 `99.01%`。15 项测试通过，其中包含量化前后无 MaxPool 的结构检查。量化流程本身未修改；这些准确率不代表旧 MaxPool 模型的准确率，卷积 MAC 减少也不是实测运行时间。

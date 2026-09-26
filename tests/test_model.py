@@ -84,6 +84,21 @@ def test_downsampling_matches_top_left_sampling_in_eval_mode():
             actual = actual[:, :, :3, :3]
         torch.testing.assert_close(actual, sampled)
 
+
+def test_quantized_model_keeps_strided_convolutions_without_pooling():
+    from quantize import build_quantized_model
+
+    prepared = build_quantized_model(Net(), torch, "fbgemm")
+    with torch.no_grad():
+        prepared(torch.randn(4, 1, 28, 28))
+    quantized = torch.ao.quantization.convert(prepared, inplace=False)
+
+    assert not any(isinstance(layer, torch.nn.MaxPool2d) for layer in quantized.modules())
+    assert [getattr(quantized.model, f"conv{i}")[0].stride for i in (1, 3, 4)] == [
+        (2, 2), (2, 2), (2, 2)
+    ]
+    assert quantized(torch.randn(2, 1, 28, 28)).shape == (2, 10)
+
 def test_model_forward_pass():
     model = Net()
     batch_size = 1
