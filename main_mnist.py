@@ -23,10 +23,9 @@ class Net(nn.Module):
 
         # First convolutional block: 28x28 -> 14x14.
         self.conv1 = nn.Sequential(
-            nn.Conv2d(1, 2, 3, padding=1, bias=False),
+            nn.Conv2d(1, 2, 3, stride=2, padding=1, bias=False),
             nn.BatchNorm2d(2),
             nn.ReLU(),
-            nn.MaxPool2d(2, 2),
         )
 
         # Second convolution: 14x14 -> 14x14.
@@ -38,18 +37,17 @@ class Net(nn.Module):
 
         # Third convolutional block: 14x14 -> 7x7.
         self.conv3 = nn.Sequential(
-            nn.Conv2d(4, 8, 3, padding=1, bias=False),
+            nn.Conv2d(4, 8, 3, stride=2, padding=1, bias=False),
             nn.BatchNorm2d(8),
             nn.ReLU(),
-            nn.MaxPool2d(2, 2),
         )
 
-        # Fourth convolutional block: 7x7 -> 3x3.
+        # Fourth convolutional block: 7x7 -> 4x4; the last row/column
+        # correspond to positions discarded by the original 2x2 pooling.
         self.conv4 = nn.Sequential(
-            nn.Conv2d(8, 8, 3, padding=1, bias=False),
+            nn.Conv2d(8, 8, 3, stride=2, padding=1, bias=False),
             nn.BatchNorm2d(8),
             nn.ReLU(),
-            nn.MaxPool2d(2, 2),
         )
 
         # Fifth convolution: 3x3 -> 3x3.
@@ -66,7 +64,7 @@ class Net(nn.Module):
         x = self.conv1(x)
         x = self.conv2(x)
         x = self.conv3(x)
-        x = self.conv4(x)
+        x = self.conv4(x)[:, :, :3, :3]
         x = self.conv5(x)
         x = x.reshape(-1, 16 * 3 * 3)
         x = self.fc1(x)

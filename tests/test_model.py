@@ -52,14 +52,37 @@ def test_convolutions_are_bn_friendly():
     assert all(conv.bias is None for conv in convs)
 
 
-def test_pooling_positions_match_hardware_architecture():
+def test_downsampling_uses_strided_convolutions_without_pooling():
     model = Net()
+    assert not any(isinstance(layer, torch.nn.MaxPool2d) for layer in model.modules())
+    assert [getattr(model, f"conv{i}")[0].stride for i in range(1, 6)] == [
+        (2, 2), (1, 1), (2, 2), (2, 2), (1, 1)
+    ]
 
-    assert any(isinstance(layer, torch.nn.MaxPool2d) for layer in model.conv1)
-    assert not any(isinstance(layer, torch.nn.MaxPool2d) for layer in model.conv2)
-    assert any(isinstance(layer, torch.nn.MaxPool2d) for layer in model.conv3)
-    assert any(isinstance(layer, torch.nn.MaxPool2d) for layer in model.conv4)
-    assert not any(isinstance(layer, torch.nn.MaxPool2d) for layer in model.conv5)
+
+def test_downsampling_matches_top_left_sampling_in_eval_mode():
+    model = Net().eval()
+    for block_name, channels, size in (
+        ("conv1", 1, 28),
+        ("conv3", 4, 14),
+        ("conv4", 8, 7),
+    ):
+        x = torch.randn(2, channels, size, size)
+        block = getattr(model, block_name)
+        conv = block[0]
+        reference = torch.nn.functional.conv2d(
+            x,
+            conv.weight,
+            bias=None,
+            stride=1,
+            padding=1,
+        )
+        sampled = block[2](block[1](reference))[:, :, ::2, ::2]
+        actual = block(x)
+        if block_name == "conv4":
+            sampled = sampled[:, :, :3, :3]
+            actual = actual[:, :, :3, :3]
+        torch.testing.assert_close(actual, sampled)
 
 def test_model_forward_pass():
     model = Net()
